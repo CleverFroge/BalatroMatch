@@ -1,0 +1,774 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <title>Match-3 Roguelike Prototype</title>
+    <style>
+        body {
+            background-color: #1a1a24;
+            color: white;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            margin: 0;
+            padding: 20px;
+            user-select: none;
+        }
+
+        h1 { margin-top: 0; color: #ffeb3b; text-shadow: 0 0 10px rgba(255, 235, 59, 0.5); }
+
+        .header {
+            display: flex;
+            justify-content: space-between;
+            width: 700px;
+            background: #2a2a35;
+            padding: 15px 30px;
+            border-radius: 12px;
+            box-shadow: 0 8px 16px rgba(0,0,0,0.6);
+            margin-bottom: 20px;
+            box-sizing: border-box;
+            border: 2px solid #3a3a45;
+        }
+
+        .score-box { text-align: center; }
+        .score-box div { font-size: 14px; color: #aaa; margin-bottom: 5px; text-transform: uppercase; letter-spacing: 1px; }
+        .score-value { font-size: 28px; font-weight: bold; font-family: monospace; }
+        
+        #targetScore { color: #ff5252; }
+        #currentScore { color: #4CAF50; }
+        #movesLeft { color: #03A9F4; }
+        #goldLeft { color: #ffd740; }
+
+        .jokers {
+            display: flex;
+            gap: 15px;
+            margin-bottom: 25px;
+            min-height: 104px; /* Maintain height when empty */
+        }
+
+        .joker {
+            background: #2d2d3d;
+            padding: 15px;
+            border-radius: 10px;
+            width: 140px;
+            text-align: center;
+            border: 2px solid #444;
+            box-shadow: 0 4px 8px rgba(0,0,0,0.4);
+            transition: transform 0.2s;
+            position: relative;
+        }
+        .joker:hover { transform: translateY(-5px); }
+        .joker b { color: #ffeb3b; display: block; margin-bottom: 8px; font-size: 16px; }
+        .joker small { color: #ccc; font-size: 12px; line-height: 1.4; display: block; }
+        .joker-trigger { animation: flash 0.5s ease-out; border-color: #ffeb3b; }
+
+        @keyframes flash {
+            0% { box-shadow: 0 0 20px #ffeb3b; transform: scale(1.1); }
+            100% { box-shadow: 0 4px 8px rgba(0,0,0,0.4); transform: scale(1); }
+        }
+
+        .game-area {
+            position: relative;
+        }
+
+        .board {
+            display: grid;
+            grid-template-columns: repeat(8, 55px);
+            grid-template-rows: repeat(8, 55px);
+            grid-gap: 6px;
+            background: #22222d;
+            padding: 12px;
+            border-radius: 12px;
+            box-shadow: inset 0 0 20px rgba(0,0,0,0.8), 0 10px 30px rgba(0,0,0,0.5);
+            border: 2px solid #333344;
+        }
+
+        .cell {
+            width: 100%;
+            height: 100%;
+            border-radius: 10px;
+            cursor: pointer;
+            box-shadow: inset 0 -4px rgba(0,0,0,0.3), 0 2px 4px rgba(0,0,0,0.4);
+            transition: transform 0.15s, opacity 0.2s;
+        }
+
+        .cell:hover { opacity: 0.85; }
+        .cell.selected {
+            transform: scale(0.85);
+            outline: 3px solid white;
+            outline-offset: 2px;
+            z-index: 10;
+        }
+        .cell.matching {
+            animation: matchAnim 0.4s ease-in forwards;
+            z-index: 5;
+        }
+        .cell.empowered {
+            animation: empowerAnim 0.25s alternate infinite;
+            z-index: 15;
+            box-shadow: 0 0 15px white, inset 0 0 15px rgba(255,255,255,0.8);
+        }
+        .cell.falling {
+            animation: bounceIn 0.4s cubic-bezier(0.28, 0.84, 0.42, 1);
+        }
+
+        @keyframes empowerAnim {
+            0% { filter: brightness(1.2); transform: scale(1.05); }
+            100% { filter: brightness(2); transform: scale(1.15); }
+        }
+
+        @keyframes matchAnim {
+            0% { transform: scale(1); filter: brightness(1); }
+            50% { transform: scale(1.2); filter: brightness(2); box-shadow: 0 0 15px white; }
+            100% { transform: scale(0); opacity: 0; filter: brightness(3); }
+        }
+        
+        @keyframes bounceIn {
+            0% { transform: translateY(-50px); opacity: 0; }
+            60% { transform: translateY(10px); opacity: 1; }
+            80% { transform: translateY(-5px); }
+            100% { transform: translateY(0); }
+        }
+
+        /* Elements */
+        .c-red { background: linear-gradient(135deg, #ff5252, #c62828); }
+        .c-blue { background: linear-gradient(135deg, #448aff, #1565c0); }
+        .c-green { background: linear-gradient(135deg, #69f0ae, #2e7d32); }
+        .c-yellow { background: linear-gradient(135deg, #ffd740, #ff8f00); }
+        .c-purple { background: linear-gradient(135deg, #e040fb, #6a1b9a); }
+
+        .floating-text {
+            position: absolute;
+            color: white;
+            font-weight: bold;
+            font-size: 22px;
+            pointer-events: none;
+            z-index: 100;
+            text-shadow: 0 2px 5px rgba(0,0,0,1);
+            animation: floatUpAndFade 1.2s cubic-bezier(0.25, 0.46, 0.45, 0.94) forwards;
+            background: rgba(0,0,0,0.6);
+            padding: 4px 10px;
+            border-radius: 6px;
+            border: 1px solid rgba(255,255,255,0.2);
+            white-space: nowrap;
+        }
+
+        @keyframes floatUpAndFade {
+            0% { opacity: 0; transform: translateY(10px) scale(0.8); }
+            20% { opacity: 1; transform: translateY(-10px) scale(1.1); }
+            100% { opacity: 0; transform: translateY(-60px) scale(1); }
+        }
+
+        .overlay-screen {
+            position: absolute;
+            top: 0; left: 0; right: 0; bottom: 0;
+            background: rgba(0,0,0,0.92);
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            border-radius: 12px;
+            z-index: 200;
+            display: none;
+        }
+        
+        .overlay-screen h2 { font-size: 40px; margin-bottom: 10px; text-align: center; }
+        .btn-action {
+            margin-top: 20px;
+            padding: 12px 30px;
+            font-size: 18px;
+            background: #ffeb3b;
+            color: #333;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-weight: bold;
+            box-shadow: 0 4px 0 #bcab27;
+            transition: 0.1s;
+        }
+        .btn-action:active { transform: translateY(4px); box-shadow: none; }
+
+        /* Shop Styles */
+        .shop-items { display: flex; gap: 15px; margin: 30px 0; }
+        .shop-item {
+            background: #2d2d3d;
+            padding: 20px 15px;
+            border-radius: 10px;
+            width: 130px;
+            text-align: center;
+            border: 2px solid #555;
+            cursor: pointer;
+            transition: 0.2s;
+            position: relative;
+        }
+        .shop-item:hover { border-color: #ffeb3b; transform: scale(1.05); }
+        .shop-item b { color: #ffeb3b; display: block; margin-bottom: 10px; font-size: 16px; }
+        .shop-item small { color: #ccc; font-size: 12px; display: block; height: 50px; }
+        .shop-item .cost { color: #ffd740; font-weight: bold; font-size: 18px; margin-top: 10px; display:block; }
+        .shop-item.sold { opacity: 0.5; pointer-events: none; border-color: #333; }
+        
+        .gold-anim { animation: floatGold 1s ease-out forwards; color: #ffd740; font-weight: bold; font-size: 24px; }
+        @keyframes floatGold { 0% { opacity:0; transform: translateY(10px); } 20% { opacity:1; } 100% { opacity:0; transform: translateY(-40px); } }
+
+        .joker-particle {
+            position: absolute;
+            width: 15px;
+            height: 15px;
+            border-radius: 50%;
+            box-shadow: 0 0 10px white, 0 0 20px currentColor;
+            z-index: 250;
+            pointer-events: none;
+            transform: translate(-50%, -50%);
+        }
+
+        .impact-ring {
+            position: absolute;
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            border: 3px solid white;
+            transform: translate(-50%, -50%) scale(0.1);
+            opacity: 1;
+            animation: ringExpand 0.3s ease-out forwards;
+            pointer-events: none;
+            z-index: 150;
+        }
+        @keyframes ringExpand {
+            100% { transform: translate(-50%, -50%) scale(1.5); opacity: 0; }
+        }
+
+    </style>
+</head>
+<body>
+
+    <h1>♦ 消除小丑牌 (Balatro Match) ♦</h1>
+
+    <div class="header">
+        <div class="score-box">
+            <div>目标分数 (Target)</div>
+            <span class="score-value" id="targetScore">8000</span>
+        </div>
+        <div class="score-box">
+            <div>当前分数 (Score)</div>
+            <span class="score-value" id="currentScore">0</span>
+        </div>
+        <div class="score-box">
+            <div>剩余步数 (Hands)</div>
+            <span class="score-value" id="movesLeft">10</span>
+        </div>
+        <div class="score-box">
+            <div>金币 (Gold)</div>
+            <span class="score-value" id="goldLeft">0</span>
+        </div>
+    </div>
+
+    <!-- Active Jokers Container -->
+    <div class="jokers" id="jokersContainer">
+    </div>
+
+    <div class="game-area">
+        <div class="board" id="board"></div>
+        
+        <!-- Game Over Screen -->
+        <div class="overlay-screen" id="gameOverScreen">
+            <h2 id="gameOverTitle">游戏结束 (GAME OVER)</h2>
+            <p style="color:#aaa;">您未能击败盲注。</p>
+            <button class="btn-action" onclick="resetGameFull()">重新开始 (New Run)</button>
+        </div>
+
+        <!-- Shop Screen -->
+        <div class="overlay-screen" id="shopScreen" style="z-index: 210;">
+            <h2 style="color:#ffeb3b; font-size:36px; margin:0;">商店 (Shop)</h2>
+            <p id="shopDesc" style="color:#ddd; font-size:16px; margin-top:10px;">
+                过关奖励: <span id="rewardBase" style="color:#ffd740"></span> + 步数转化: <span id="rewardMoves" style="color:#ffd740"></span>
+            </p>
+            <div class="shop-items" id="shopItems">
+                <!-- items injected via js -->
+            </div>
+            <button class="btn-action" onclick="initGame()">进入下一局 (Next Ante)</button>
+        </div>
+    </div>
+
+    <script src="config.js"></script>
+    <script>
+        const ROWS = GAME_CONFIG.ROWS;
+        const COLS = GAME_CONFIG.COLS;
+        const COLORS = GAME_CONFIG.COLORS;
+        const MAX_JOKERS = GAME_CONFIG.MAX_JOKERS;
+
+        let board = [];
+        let score = 0;
+        let target = GAME_CONFIG.TARGET_SCORE_BASE;
+        let moves = GAME_CONFIG.INITIAL_MOVES;
+        let gold = 0;
+        let level = 1;
+        let activeJokers = [];
+        let selectedCell = null;
+        let isProcessing = false;
+
+        const boardEl = document.getElementById('board');
+        const scoreEl = document.getElementById('currentScore');
+        const targetEl = document.getElementById('targetScore');
+        const movesEl = document.getElementById('movesLeft');
+        const goldEl = document.getElementById('goldLeft');
+        const gameOverScreen = document.getElementById('gameOverScreen');
+        const shopScreen = document.getElementById('shopScreen');
+        const jokersContainer = document.getElementById('jokersContainer');
+
+        function resetGameFull() {
+            gold = 0;
+            level = 1;
+            activeJokers = [ JOKER_POOL[0] ]; // Give one starting joker
+            renderActiveJokers();
+            initGame();
+        }
+
+        // Initialize Level
+        function initGame() {
+            score = 0;
+            moves = GAME_CONFIG.INITIAL_MOVES;
+            target = level * GAME_CONFIG.TARGET_SCORE_BASE;
+            updateUI();
+            gameOverScreen.style.display = 'none';
+            shopScreen.style.display = 'none';
+            selectedCell = null;
+            isProcessing = false;
+
+            // Generate Board ensuring no initial matches
+            board = Array(ROWS).fill().map(() => Array(COLS).fill(null));
+            for(let r=0; r<ROWS; r++) {
+                for(let c=0; c<COLS; c++) {
+                    let availableColors = [...COLORS];
+                    if(r >= 2 && board[r-1][c] === board[r-2][c]) {
+                        availableColors = availableColors.filter(col => col !== board[r-1][c]);
+                    }
+                    if(c >= 2 && board[r][c-1] === board[r][c-2]) {
+                        availableColors = availableColors.filter(col => col !== board[r][c-1]);
+                    }
+                    board[r][c] = availableColors[Math.floor(Math.random() * availableColors.length)];
+                }
+            }
+            renderBoard();
+        }
+
+        function renderActiveJokers() {
+            jokersContainer.innerHTML = '';
+            activeJokers.forEach(j => {
+                const div = document.createElement('div');
+                div.className = 'joker';
+                div.id = j.id;
+                div.innerHTML = `<b>${j.name}</b><small>${j.desc}</small>`;
+                jokersContainer.appendChild(div);
+            });
+        }
+
+        // Render Board
+        function renderBoard(matchCells = [], fallingCells = [], empoweredCells = []) {
+            boardEl.innerHTML = '';
+            for(let r=0; r<ROWS; r++) {
+                for(let c=0; c<COLS; c++) {
+                    if(!board[r][c] && !matchCells.some(m => m.r === r && m.c === c)) continue;
+                    
+                    const cell = document.createElement('div');
+                    cell.className = `cell ${board[r][c]}`;
+                    cell.dataset.r = r;
+                    cell.dataset.c = c;
+                    cell.onclick = () => onCellClick(parseInt(r), parseInt(c));
+                    
+                    if(selectedCell && selectedCell.r === r && selectedCell.c === c) {
+                        cell.classList.add('selected');
+                    }
+
+                    if(empoweredCells.some(m => m.r === r && m.c === c)) {
+                        cell.classList.add('empowered');
+                    }
+                    
+                    if(matchCells.some(m => m.r === r && m.c === c)) {
+                        cell.classList.add('matching');
+                    }
+                    
+                    if(fallingCells.some(m => m.r === r && m.c === c)) {
+                        cell.classList.add('falling');
+                    }
+                    
+                    cell.style.gridRow = r + 1;
+                    cell.style.gridColumn = c + 1;
+                    
+                    boardEl.appendChild(cell);
+                }
+            }
+        }
+
+        function updateUI() {
+            scoreEl.innerText = score;
+            targetEl.innerText = target;
+            movesEl.innerText = moves;
+            goldEl.innerText = gold;
+        }
+
+        const sleep = ms => new Promise(res => setTimeout(res, ms));
+
+        // Handle Click
+        async function onCellClick(r, c) {
+            if(isProcessing) return;
+
+            if(!selectedCell) {
+                selectedCell = {r, c};
+                renderBoard();
+            } else {
+                const sr = selectedCell.r;
+                const sc = selectedCell.c;
+                
+                if(sr === r && sc === c) {
+                    selectedCell = null;
+                    renderBoard();
+                    return;
+                }
+
+                const isAdjacent = Math.abs(sr - r) + Math.abs(sc - c) === 1;
+                
+                if(isAdjacent) {
+                    isProcessing = true;
+                    selectedCell = null;
+                    
+                    [board[sr][sc], board[r][c]] = [board[r][c], board[sr][sc]];
+                    moves--; // Any swap costs a move now
+                    updateUI();
+                    renderBoard();
+                    await sleep(200);
+
+                    const matches = findMatches();
+                    if(matches.length === 0) {
+                        checkGameState(); // Did we run out of moves while setting up?
+                        isProcessing = false;
+                    } else {
+                        await processMatches(matches);
+                    }
+                } else {
+                    selectedCell = {r, c};
+                    renderBoard();
+                }
+            }
+        }
+
+        function findMatches() {
+            const matchSet = new Set();
+            for(let r=0; r<ROWS; r++) {
+                for(let c=0; c<COLS-2; c++) {
+                    let color = board[r][c];
+                    if(!color) continue;
+                    if(board[r][c+1] === color && board[r][c+2] === color) {
+                        matchSet.add(`${r},${c}`); matchSet.add(`${r},${c+1}`); matchSet.add(`${r},${c+2}`);
+                    }
+                }
+            }
+            for(let r=0; r<ROWS-2; r++) {
+                for(let c=0; c<COLS; c++) {
+                    let color = board[r][c];
+                    if(!color) continue;
+                    if(board[r+1][c] === color && board[r+2][c] === color) {
+                        matchSet.add(`${r},${c}`); matchSet.add(`${r+1},${c}`); matchSet.add(`${r+2},${c}`);
+                    }
+                }
+            }
+            return Array.from(matchSet).map(s => {
+                const [r, c] = s.split(',');
+                return { r: parseInt(r), c: parseInt(c) };
+            });
+        }
+
+        async function processMatches(matches, comboCounter = 1) {
+            if(matches.length === 0) {
+                checkGameState();
+                isProcessing = false;
+                return;
+            }
+
+            const groups = {};
+            matches.forEach(m => {
+                const color = board[m.r][m.c];
+                if(!groups[color]) groups[color] = [];
+                groups[color].push(m);
+            });
+
+            let allEmpowered = [];
+
+            for(const color in groups) {
+                const group = groups[color];
+                const size = group.length;
+                
+                let chips = size * 10;
+                let mult = size - 1 + comboCounter;
+
+                let triggeredJokers = [];
+
+                // Apply Active Jokers
+                activeJokers.forEach(joker => {
+                    let triggered = false;
+                    
+                    if(joker.color === color) {
+                        if(joker.id === 'joker-red') { mult += 3; triggered = true; }
+                        if(joker.id === 'joker-blue') { chips += 50; triggered = true; }
+                        if(joker.id === 'joker-green') { mult += 4; triggered = true; }
+                        if(joker.id === 'joker-yellow') { chips += 60; triggered = true; }
+                        if(joker.id === 'joker-purple') { triggered = true; }
+                    }
+                    if(joker.id === 'joker-geo' && size >= 4) {
+                        triggered = true; 
+                    }
+                    if(joker.id === 'joker-combo' && comboCounter >= 3) {
+                        triggered = true;
+                    }
+
+                    if(triggered) {
+                        triggeredJokers.push(joker.id);
+                        flashJoker(joker.id);
+                    }
+                });
+
+                const centerCell = group[Math.floor(size/2)];
+
+                // Play Joker Particle Effects on ALL cells in the matched group
+                if (triggeredJokers.length > 0) {
+                    let animPromises = [];
+                    triggeredJokers.forEach(jId => {
+                        group.forEach(cell => {
+                            animPromises.push(spawnJokerParticle(jId, cell.r, cell.c, color));
+                        });
+                    });
+                    
+                    await Promise.all(animPromises);
+                    
+                    // Add empowered visual effect and let it play for a while
+                    allEmpowered.push(...group);
+                    renderBoard([], [], allEmpowered);
+                    await sleep(400); 
+                }
+                
+                let groupScore = chips * mult;
+
+                activeJokers.forEach(joker => {
+                    if(joker.id === 'joker-purple' && joker.color === color) { groupScore *= 1.5; }
+                    if(joker.id === 'joker-geo' && size >= 4) { groupScore *= 2; }
+                    if(joker.id === 'joker-combo' && comboCounter >= 3) { groupScore *= 3; }
+                });
+
+                groupScore = Math.floor(groupScore);
+                score += groupScore;
+                updateUI();
+
+                showFloatingText(centerCell.r, centerCell.c, `${chips} x ${mult}`, color);
+            }
+
+            renderBoard(matches, []);
+            await sleep(500);
+
+            matches.forEach(m => { board[m.r][m.c] = null; });
+            
+            renderBoard();
+            await sleep(150);
+
+            let falling = [];
+            for(let c=0; c<COLS; c++) {
+                let emptySpaces = 0;
+                for(let r=ROWS-1; r>=0; r--) {
+                    if(board[r][c] === null) {
+                        emptySpaces++;
+                    } else if(emptySpaces > 0) {
+                        board[r+emptySpaces][c] = board[r][c];
+                        board[r][c] = null;
+                        falling.push({r: r+emptySpaces, c: c});
+                    }
+                }
+                for(let r=0; r<emptySpaces; r++) {
+                    board[r][c] = COLORS[Math.floor(Math.random() * COLORS.length)];
+                    falling.push({r: r, c: c});
+                }
+            }
+
+            renderBoard([], falling);
+            await sleep(400);
+
+            const newMatches = findMatches();
+            if(newMatches.length > 0) {
+                await processMatches(newMatches, comboCounter + 1);
+            } else {
+                checkGameState();
+                isProcessing = false;
+            }
+        }
+
+        function showFloatingText(r, c, text, colorClass) {
+            const rect = boardEl.getBoundingClientRect();
+            const cellWidth = 55 + 6;
+            const x = rect.left + c * cellWidth + 10;
+            const y = rect.top + r * cellWidth + window.scrollY;
+
+            const el = document.createElement('div');
+            el.className = 'floating-text';
+            el.innerText = text;
+            el.style.left = `${x}px`;
+            el.style.top = `${y}px`;
+            
+            if(colorClass === 'c-red') el.style.color = '#ff8a80';
+            if(colorClass === 'c-blue') el.style.color = '#82b1ff';
+            if(colorClass === 'c-green') el.style.color = '#b9f6ca';
+            if(colorClass === 'c-yellow') el.style.color = '#ffe57f';
+            if(colorClass === 'c-purple') el.style.color = '#ea80fc';
+
+            document.body.appendChild(el);
+            setTimeout(() => el.remove(), 1200);
+        }
+
+        function createImpactFlash(x, y, color) {
+            const ring = document.createElement('div');
+            ring.className = 'impact-ring';
+            ring.style.left = `${x}px`;
+            ring.style.top = `${y}px`;
+            ring.style.borderColor = color;
+            document.body.appendChild(ring);
+            setTimeout(() => ring.remove(), 300);
+        }
+
+        function spawnJokerParticle(jokerId, r, c, colorClass) {
+            return new Promise(resolve => {
+                const jokerEl = document.getElementById(jokerId);
+                if(!jokerEl) { resolve(); return; }
+
+                const jRect = jokerEl.getBoundingClientRect();
+                const startX = jRect.left + jRect.width / 2;
+                const startY = jRect.top + jRect.height / 2 + window.scrollY;
+
+                const rect = boardEl.getBoundingClientRect();
+                const cellWidth = 55 + 6;
+                const endX = rect.left + c * cellWidth + cellWidth / 2;
+                const endY = rect.top + r * cellWidth + cellWidth / 2 + window.scrollY;
+
+                const particle = document.createElement('div');
+                particle.className = 'joker-particle';
+                
+                let color = '#ffeb3b';
+                if(colorClass === 'c-red') color = '#ff8a80';
+                else if(colorClass === 'c-blue') color = '#82b1ff';
+                else if(colorClass === 'c-green') color = '#b9f6ca';
+                else if(colorClass === 'c-yellow') color = '#ffe57f';
+                else if(colorClass === 'c-purple') color = '#ea80fc';
+                
+                particle.style.background = color;
+                particle.style.color = color;
+                particle.style.left = `${startX}px`;
+                particle.style.top = `${startY}px`;
+                
+                document.body.appendChild(particle);
+
+                const duration = 400; // ms 飞行时间
+                const startTime = performance.now();
+
+                // 控制点制造曲线飞行
+                const controlX = startX + (endX - startX) / 2 + (Math.random() > 0.5 ? 80 : -80);
+                const controlY = startY - 50;
+
+                function animate(currentTime) {
+                    let elapsed = currentTime - startTime;
+                    let progress = elapsed / duration;
+                    if (progress > 1) progress = 1;
+
+                    // Ease out cubic
+                    let easeProgress = 1 - Math.pow(1 - progress, 3);
+
+                    // Quadratic Bezier
+                    const currentX = Math.pow(1 - easeProgress, 2) * startX + 2 * (1 - easeProgress) * easeProgress * controlX + Math.pow(easeProgress, 2) * endX;
+                    const currentY = Math.pow(1 - easeProgress, 2) * startY + 2 * (1 - easeProgress) * easeProgress * controlY + Math.pow(easeProgress, 2) * endY;
+
+                    particle.style.left = `${currentX}px`;
+                    particle.style.top = `${currentY}px`;
+                    particle.style.transform = `translate(-50%, -50%) scale(${1 - progress * 0.5})`;
+
+                    if (progress < 1) {
+                        requestAnimationFrame(animate);
+                    } else {
+                        particle.remove();
+                        createImpactFlash(endX, endY, color);
+                        resolve();
+                    }
+                }
+                requestAnimationFrame(animate);
+            });
+        }
+
+        function flashJoker(id) {
+            const el = document.getElementById(id);
+            if(!el) return;
+            el.classList.remove('joker-trigger');
+            void el.offsetWidth;
+            el.classList.add('joker-trigger');
+        }
+
+        async function checkGameState() {
+            if(score >= target) {
+                // Beat the blind -> Go to Shop
+                level++;
+                
+                // Calculate rewards
+                const baseReward = GAME_CONFIG.BASE_REWARD;
+                const moveReward = moves * GAME_CONFIG.MOVE_REWARD_MULTIPLIER;
+                gold += (baseReward + moveReward);
+                updateUI();
+                
+                document.getElementById('rewardBase').innerText = `+${baseReward}`;
+                document.getElementById('rewardMoves').innerText = `+${moveReward}`;
+                
+                openShop();
+            } else if (moves <= 0) {
+                gameOverScreen.style.display = 'flex';
+                document.getElementById('gameOverTitle').style.color = '#ff5252';
+            }
+        }
+
+        function openShop() {
+            shopScreen.style.display = 'flex';
+            const shopItemsContainer = document.getElementById('shopItems');
+            shopItemsContainer.innerHTML = '';
+            
+            // Pick 3 random jokers
+            const available = JOKER_POOL.filter(j => !activeJokers.find(aj => aj.id === j.id));
+            const shuffled = available.sort(() => 0.5 - Math.random());
+            const shopStock = shuffled.slice(0, 3);
+            
+            shopStock.forEach(item => {
+                const el = document.createElement('div');
+                el.className = 'shop-item';
+                el.innerHTML = `
+                    <b>${item.name}</b>
+                    <small>${item.desc}</small>
+                    <span class="cost">$${item.cost}</span>
+                `;
+                el.onclick = () => buyItem(item, el);
+                shopItemsContainer.appendChild(el);
+            });
+        }
+
+        function buyItem(item, element) {
+            if(gold >= item.cost) {
+                if(activeJokers.length >= MAX_JOKERS) {
+                    alert("小丑牌已满! (Max Jokers Reached)");
+                    return;
+                }
+                gold -= item.cost;
+                updateUI();
+                activeJokers.push(item);
+                renderActiveJokers();
+                
+                element.classList.add('sold');
+                element.innerHTML = `<b>已售出</b><small>Sold Out</small>`;
+            } else {
+                alert("金币不足! (Not enough gold)");
+            }
+        }
+
+        // Start
+        resetGameFull();
+    </script>
+</body>
+</html>
