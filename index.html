@@ -426,7 +426,7 @@
                     return;
                 }
 
-                const isAdjacent = Math.abs(sr - r) + Math.abs(sc - c) === 1;
+                const isAdjacent = Math.abs(sr - r) <= 1 && Math.abs(sc - c) <= 1;
                 
                 if(isAdjacent) {
                     isProcessing = true;
@@ -469,6 +469,26 @@
                     if(!color) continue;
                     if(board[r+1][c] === color && board[r+2][c] === color) {
                         matchSet.add(`${r},${c}`); matchSet.add(`${r+1},${c}`); matchSet.add(`${r+2},${c}`);
+                    }
+                }
+            }
+            // Diagonal down-right (\)
+            for(let r=0; r<ROWS-2; r++) {
+                for(let c=0; c<COLS-2; c++) {
+                    let color = board[r][c];
+                    if(!color) continue;
+                    if(board[r+1][c+1] === color && board[r+2][c+2] === color) {
+                        matchSet.add(`${r},${c}`); matchSet.add(`${r+1},${c+1}`); matchSet.add(`${r+2},${c+2}`);
+                    }
+                }
+            }
+            // Diagonal down-left (/)
+            for(let r=0; r<ROWS-2; r++) {
+                for(let c=2; c<COLS; c++) {
+                    let color = board[r][c];
+                    if(!color) continue;
+                    if(board[r+1][c-1] === color && board[r+2][c-2] === color) {
+                        matchSet.add(`${r},${c}`); matchSet.add(`${r+1},${c-1}`); matchSet.add(`${r+2},${c-2}`);
                     }
                 }
             }
