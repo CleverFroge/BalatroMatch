@@ -17,6 +17,6 @@ const JOKER_POOL = [
     { id: 'joker-green', name: '翡翠之叶', desc: '消除绿色方块时<br>倍率 (Mult) + 4', cost: 6, color: 'c-green' },
     { id: 'joker-yellow', name: '黄金之风', desc: '消除黄色方块时<br>基础分 (Chips) + 60', cost: 6, color: 'c-yellow' },
     { id: 'joker-purple', name: '虚空之眼', desc: '消除紫色方块时<br>最终计分 X 1.5', cost: 10, color: 'c-purple' },
-    { id: 'joker-geo', name: '几何大师', desc: '达成4连消及以上时<br>最终计分 X 2', cost: 8, type: 'shape' },
+    { id: 'joker-geo', name: '几何大师', desc: '达成5连消及以上时<br>最终计分 X 2', cost: 8, type: 'shape' },
     { id: 'joker-combo', name: '多米诺', desc: '连击数>=3时<br>最终计分 X 3', cost: 12, type: 'combo' }
 ];
