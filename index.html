@@ -95,6 +95,9 @@
 
         .game-area {
             position: relative;
+            display: flex;
+            gap: 20px;
+            align-items: flex-start;
         }
 
         .board {
@@ -208,26 +211,130 @@
         .c-yellow { background: linear-gradient(135deg, #ffd740, #ff8f00); }
         .c-purple { background: linear-gradient(135deg, #e040fb, #6a1b9a); }
 
-        .floating-text {
-            position: absolute;
-            color: white;
-            font-weight: bold;
-            font-size: 22px;
+        /* ========== 计分展示面板 ========== */
+        .score-panel {
+            width: 300px;
+            background: #1e1e2e;
+            border: 2px solid #3a3a55;
+            border-radius: 12px;
+            padding: 14px 16px;
+            box-shadow: 0 8px 24px rgba(0,0,0,0.7);
+            opacity: 0;
+            transition: opacity 0.25s ease;
             pointer-events: none;
-            z-index: 100;
-            text-shadow: 0 2px 5px rgba(0,0,0,1);
-            animation: floatUpAndFade 1.2s cubic-bezier(0.25, 0.46, 0.45, 0.94) forwards;
-            background: rgba(0,0,0,0.6);
-            padding: 4px 10px;
-            border-radius: 6px;
-            border: 1px solid rgba(255,255,255,0.2);
-            white-space: nowrap;
+            overflow: hidden;
+        }
+        .score-panel.visible {
+            opacity: 1;
+        }
+        .score-panel.fadeout {
+            opacity: 0;
+            transition: opacity 0.6s ease;
         }
 
-        @keyframes floatUpAndFade {
-            0% { opacity: 0; transform: translateY(10px) scale(0.8); }
-            20% { opacity: 1; transform: translateY(-10px) scale(1.1); }
-            100% { opacity: 0; transform: translateY(-60px) scale(1); }
+        .sp-title {
+            font-size: 12px;
+            color: #888;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            margin-bottom: 8px;
+            border-bottom: 1px solid #333;
+            padding-bottom: 6px;
+        }
+
+        /* 方向行 */
+        .sp-direction {
+            font-size: 13px;
+            color: #aad4ff;
+            margin-bottom: 8px;
+            opacity: 0;
+            transform: translateY(6px);
+            transition: opacity 0.25s ease, transform 0.25s ease;
+            line-height: 1.5;
+        }
+        .sp-direction.show {
+            opacity: 1;
+            transform: translateY(0);
+        }
+        .sp-dir-badge {
+            display: inline-block;
+            background: rgba(100,160,255,0.15);
+            border: 1px solid rgba(100,160,255,0.35);
+            border-radius: 4px;
+            padding: 1px 6px;
+            font-size: 12px;
+            margin-right: 3px;
+        }
+        .sp-mult-badge {
+            font-weight: bold;
+            color: #ffeb3b;
+        }
+
+        /* 分隔线 */
+        .sp-divider {
+            border: none;
+            border-top: 1px solid #2a2a40;
+            margin: 6px 0;
+        }
+
+        /* 方块明细行 */
+        .sp-row {
+            font-size: 12px;
+            color: #ccc;
+            margin: 3px 0;
+            opacity: 0;
+            transform: translateX(-8px);
+            transition: opacity 0.2s ease, transform 0.2s ease;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            line-height: 1.6;
+        }
+        .sp-row.show {
+            opacity: 1;
+            transform: translateX(0);
+        }
+        /* 卡牌加成高亮色 */
+        .sp-bonus-red    { color: #ff8a80; font-weight: bold; }
+        .sp-bonus-blue   { color: #82b1ff; font-weight: bold; }
+        .sp-bonus-green  { color: #b9f6ca; font-weight: bold; }
+        .sp-bonus-yellow { color: #ffe57f; font-weight: bold; }
+        .sp-bonus-purple { color: #ea80fc; font-weight: bold; }
+        .sp-bonus-shape  { color: #ff80ab; font-weight: bold; }
+        .sp-bonus-combo  { color: #80d8ff; font-weight: bold; }
+
+        /* 总分行 */
+        .sp-total {
+            margin-top: 8px;
+            padding-top: 8px;
+            border-top: 1px solid #3a3a55;
+            font-size: 15px;
+            color: #fff;
+            font-weight: bold;
+            text-align: right;
+            opacity: 0;
+            transform: scale(0.9);
+            transition: opacity 0.3s ease, transform 0.3s cubic-bezier(0.28, 0.84, 0.42, 1);
+        }
+        .sp-total.show {
+            opacity: 1;
+            transform: scale(1);
+        }
+        .sp-total-num {
+            display: inline-block;
+            color: #4dff91;
+            font-size: 20px;
+            font-family: monospace;
+            animation: none;
+        }
+        .sp-total-num.bounce {
+            animation: totalBounce 0.5s cubic-bezier(0.28, 0.84, 0.42, 1);
+        }
+        @keyframes totalBounce {
+            0%   { transform: scale(0.7); }
+            60%  { transform: scale(1.18); }
+            80%  { transform: scale(0.95); }
+            100% { transform: scale(1); }
         }
 
         .overlay-screen {
@@ -374,10 +481,11 @@
     </div>
 
     <div class="game-area">
-        <div class="board" id="board"></div>
-        
-        <!-- Game Over Screen -->
-        <div class="overlay-screen" id="gameOverScreen">
+        <div style="position:relative;">
+            <div class="board" id="board"></div>
+
+            <!-- Game Over Screen -->
+            <div class="overlay-screen" id="gameOverScreen">
             <h2 id="gameOverTitle">游戏结束 (GAME OVER)</h2>
             <p style="color:#aaa;">您未能击败盲注。</p>
             <button class="btn-action" onclick="resetGameFull()">重新开始 (New Run)</button>
@@ -393,6 +501,18 @@
                 <!-- items injected via js -->
             </div>
             <button class="btn-action" onclick="initGame()">进入下一局 (Next Ante)</button>
+        </div>
+        </div><!-- /.board wrapper -->
+
+        <!-- 计分展示面板 -->
+        <div class="score-panel" id="scorePanel">
+            <div class="sp-title">⚔ 消除计分详情</div>
+            <div id="spDirection" class="sp-direction"></div>
+            <hr class="sp-divider" id="spDivider" style="display:none;">
+            <div id="spRows"></div>
+            <div class="sp-total" id="spTotal">
+                本次消除：<span class="sp-total-num" id="spTotalNum">+0</span>
+            </div>
         </div>
     </div>
 
@@ -929,12 +1049,13 @@
                     renderBoard();
                     await sleep(200);
 
-                    const matches = findMatches();
-                    if(matches.length === 0) {
+                    const matchResult = findMatches();
+                    if(matchResult.cells.length === 0) {
                         checkGameState();
                         isProcessing = false;
                     } else {
-                        await processMatches(matches);
+                        // 将被移动的两个方块坐标传入，用于基础倍率判定
+                        await processMatches(matchResult, 1, [{r: sr, c: sc}, {r, c}]);
                     }
                 } else {
                     selectedCell = {r, c};
@@ -944,7 +1065,10 @@
         }
 
         function findMatches() {
+            // groups: 每个匹配组 { cells: [{r,c},...], direction: 'horizontal'|'vertical'|'diagonal' }
+            const groups = [];
             const matchSet = new Set();
+
             // Horizontal (4 in a row)
             for(let r=0; r<ROWS; r++) {
                 for(let c=0; c<COLS-3; c++) {
@@ -954,6 +1078,7 @@
                     if(board[r][c+1] && board[r][c+1].color === color &&
                        board[r][c+2] && board[r][c+2].color === color &&
                        board[r][c+3] && board[r][c+3].color === color) {
+                        groups.push({ cells: [{r,c},{r,c:c+1},{r,c:c+2},{r,c:c+3}], direction: 'horizontal' });
                         matchSet.add(`${r},${c}`); matchSet.add(`${r},${c+1}`); matchSet.add(`${r},${c+2}`); matchSet.add(`${r},${c+3}`);
                     }
                 }
@@ -967,6 +1092,7 @@
                     if(board[r+1][c] && board[r+1][c].color === color &&
                        board[r+2][c] && board[r+2][c].color === color &&
                        board[r+3][c] && board[r+3][c].color === color) {
+                        groups.push({ cells: [{r,c},{r:r+1,c},{r:r+2,c},{r:r+3,c}], direction: 'vertical' });
                         matchSet.add(`${r},${c}`); matchSet.add(`${r+1},${c}`); matchSet.add(`${r+2},${c}`); matchSet.add(`${r+3},${c}`);
                     }
                 }
@@ -980,6 +1106,7 @@
                     if(board[r+1][c+1] && board[r+1][c+1].color === color &&
                        board[r+2][c+2] && board[r+2][c+2].color === color &&
                        board[r+3][c+3] && board[r+3][c+3].color === color) {
+                        groups.push({ cells: [{r,c},{r:r+1,c:c+1},{r:r+2,c:c+2},{r:r+3,c:c+3}], direction: 'diagonal' });
                         matchSet.add(`${r},${c}`); matchSet.add(`${r+1},${c+1}`); matchSet.add(`${r+2},${c+2}`); matchSet.add(`${r+3},${c+3}`);
                     }
                 }
@@ -993,24 +1120,62 @@
                     if(board[r+1][c-1] && board[r+1][c-1].color === color &&
                        board[r+2][c-2] && board[r+2][c-2].color === color &&
                        board[r+3][c-3] && board[r+3][c-3].color === color) {
+                        groups.push({ cells: [{r,c},{r:r+1,c:c-1},{r:r+2,c:c-2},{r:r+3,c:c-3}], direction: 'diagonal' });
                         matchSet.add(`${r},${c}`); matchSet.add(`${r+1},${c-1}`); matchSet.add(`${r+2},${c-2}`); matchSet.add(`${r+3},${c-3}`);
                     }
                 }
             }
-            return Array.from(matchSet).map(s => {
+
+            const cells = Array.from(matchSet).map(s => {
                 const [r, c] = s.split(',');
                 return { r: parseInt(r), c: parseInt(c) };
             });
+
+            // groups: 带方向的匹配组列表，cells: 所有消除方块的扁平列表
+            return { cells, groups };
         }
 
-        async function processMatches(matches, comboCounter = 1) {
+        async function processMatches(matchResult, comboCounter = 1, swappedCells = null) {
+            const matches = matchResult.cells;
             if(matches.length === 0) {
                 checkGameState();
                 isProcessing = false;
                 return;
             }
 
-            // 按颜色分组
+            // ===== 基础倍率：看被移动方块是否处于多方向匹配的交叉点 =====
+            // swappedCells 为 null 时是连锁消除，基础倍率固定为 1
+            let baseMult = 1;
+            // 面板展示用的方向信息：记录决定倍率的那个方块所在的方向集合
+            let panelDirections = new Set(); // 用于面板展示
+
+            if(swappedCells && swappedCells.length > 0) {
+                const { groups } = matchResult;
+
+                // 对每个被移动的方块，统计其参与了哪些方向的匹配组
+                let bestDirCount = 0;
+                let bestDirSet = new Set();
+
+                for(const swapped of swappedCells) {
+                    const dirSet = new Set();
+                    for(const group of groups) {
+                        const inGroup = group.cells.some(cell => cell.r === swapped.r && cell.c === swapped.c);
+                        if(inGroup) {
+                            dirSet.add(group.direction);
+                        }
+                    }
+                    if(dirSet.size > bestDirCount) {
+                        bestDirCount = dirSet.size;
+                        bestDirSet = dirSet;
+                    }
+                }
+
+                baseMult = Math.max(1, bestDirCount);
+                panelDirections = bestDirSet;
+            }
+            // swappedCells 为 null（连锁消除）：baseMult 保持 1，panelDirections 为空
+
+            // 按颜色分组（保留原有视觉特效逻辑）
             const groups = {};
             matches.forEach(m => {
                 const cellData = board[m.r][m.c];
@@ -1022,87 +1187,114 @@
 
             let allEmpowered = [];
 
+            // ===== 计分：逐方块计分 =====
+            // 收集本次所有方块明细（供面板展示用）
+            let panelRows = [];         // { colorClass, baseChip, chipBonus, jokerChip, baseMult, multBonus, jokerMult, cellScore }
+            let roundTotalScore = 0;
+
             for(const color in groups) {
                 const group = groups[color];
                 const size = group.length;
-                
-                let chips = size * 10;
-                let mult = size - 1 + comboCounter;
 
-                let triggeredJokers = [];
-                let triggeredJokerCells = []; // 记录哪些格子的小丑牌被触发了
+                let triggeredJokerCells = [];
 
-                // 遍历被消除方块，检查附着的小丑牌
+                // ===== 先做粒子特效判断（逻辑与原版一致） =====
                 group.forEach(m => {
                     const cellData = board[m.r][m.c];
                     if(!cellData || !cellData.joker) return;
                     const joker = cellData.joker;
                     let triggered = false;
 
-                    // 颜色类小丑牌：附着在对应颜色方块上才生效
                     if(joker.color && joker.color === color) {
-                        if(joker.id === 'joker-red') { mult += 3; triggered = true; }
-                        if(joker.id === 'joker-blue') { chips += 50; triggered = true; }
-                        if(joker.id === 'joker-green') { mult += 4; triggered = true; }
-                        if(joker.id === 'joker-yellow') { chips += 60; triggered = true; }
-                        if(joker.id === 'joker-purple') { triggered = true; }
+                        // 颜色类小丑牌（红/蓝/绿/黄/紫）
+                        if(['joker-red','joker-blue','joker-green','joker-yellow','joker-purple'].includes(joker.id)) {
+                            triggered = true;
+                        }
                     }
-                    // 几何大师：附着的方块被消除且本组达成5连消
-                    if(joker.id === 'joker-geo' && size >= 5) {
-                        triggered = true;
-                    }
-                    // 多米诺：附着的方块被消除且连击数>=3
-                    if(joker.id === 'joker-combo' && comboCounter >= 3) {
-                        triggered = true;
-                    }
+                    if(joker.id === 'joker-geo' && size >= 5) { triggered = true; }
+                    if(joker.id === 'joker-combo' && comboCounter >= 3) { triggered = true; }
 
                     if(triggered) {
-                        triggeredJokers.push(joker);
                         triggeredJokerCells.push({ r: m.r, c: m.c, joker: joker });
                     }
                 });
 
-                const centerCell = group[Math.floor(size/2)];
-
-                // 播放触发的小丑牌特效（从附着的方块本身发出冲击波）
+                // 播放粒子特效
                 if(triggeredJokerCells.length > 0) {
                     let animPromises = [];
                     triggeredJokerCells.forEach(tc => {
-                        // 从附着方块发射粒子到消除组的每个方块
                         group.forEach(cell => {
                             if(cell.r !== tc.r || cell.c !== tc.c) {
                                 animPromises.push(spawnCellParticle(tc.r, tc.c, cell.r, cell.c, color));
                             }
                         });
                     });
-                    
                     await Promise.all(animPromises);
-                    
                     allEmpowered.push(...group);
                     renderBoard([], [], allEmpowered);
                     await sleep(400);
                 }
-                
-                let groupScore = chips * mult;
 
-                // 乘法阶段：检查触发的小丑牌
-                triggeredJokers.forEach(joker => {
-                    if(joker.id === 'joker-purple') { groupScore *= 1.5; }
-                    if(joker.id === 'joker-geo') { groupScore *= 2; }
-                    if(joker.id === 'joker-combo') { groupScore *= 3; }
+                // ===== 逐方块计分 =====
+                group.forEach(m => {
+                    const cellData = board[m.r][m.c];
+                    if(!cellData) return;
+                    const joker = cellData.joker;
+
+                    let chipBonus = 0;   // 基础分加成
+                    let multBonus = 0;   // 倍率加成
+                    let jokerForPanel = null; // 面板展示用的卡牌信息
+
+                    if(joker) {
+                        // 颜色类
+                        if(joker.color && joker.color === color) {
+                            if(joker.id === 'joker-blue')   { chipBonus += 50; jokerForPanel = joker; }
+                            if(joker.id === 'joker-yellow') { chipBonus += 60; jokerForPanel = joker; }
+                            if(joker.id === 'joker-red')    { multBonus += 3;  jokerForPanel = joker; }
+                            if(joker.id === 'joker-green')  { multBonus += 4;  jokerForPanel = joker; }
+                            if(joker.id === 'joker-purple') { multBonus += 5;  jokerForPanel = joker; }
+                        }
+                        // 几何大师（5连消及以上触发）
+                        if(joker.id === 'joker-geo' && size >= 5) {
+                            multBonus += 6;
+                            jokerForPanel = joker;
+                        }
+                        // 多米诺（连击数>=3时触发）
+                        if(joker.id === 'joker-combo' && comboCounter >= 3) {
+                            multBonus += 8;
+                            jokerForPanel = joker;
+                        }
+                    }
+
+                    const baseChip  = GAME_CONFIG.BASE_CHIP;   // 10
+                    const totalChip = baseChip + chipBonus;
+                    const totalMult = baseMult + multBonus;
+                    const cellScore = totalChip * totalMult;
+
+                    roundTotalScore += cellScore;
+
+                    panelRows.push({
+                        colorClass: color,
+                        baseChip,
+                        chipBonus,
+                        baseMult,
+                        multBonus,
+                        joker: jokerForPanel,
+                        cellScore
+                    });
                 });
-
-                groupScore = Math.floor(groupScore);
-                score += groupScore;
-                updateUI();
-
-                showFloatingText(centerCell.r, centerCell.c, `${chips} x ${mult}`, color);
             }
 
+            score += roundTotalScore;
+            updateUI();
+
+            // ===== 展示计分面板 =====
+            showScorePanel(panelDirections, baseMult, panelRows, roundTotalScore);
+
+            // ===== 消除动画 =====
             renderBoard(matches, []);
             await sleep(500);
 
-            // 消除方块（附着标记随方块清除，但不影响背包中的小丑牌）
             matches.forEach(m => { board[m.r][m.c] = null; });
             renderBoard();
             await sleep(150);
@@ -1132,38 +1324,134 @@
             renderBoard([], falling);
             await sleep(400);
 
-            // ===== 自动附着：下落填充完成后，从背包取牌随机附着到方块上 =====
+            // ===== 自动附着 =====
             await autoAttachFromInventory();
 
-            const newMatches = findMatches();
-            if(newMatches.length > 0) {
-                await processMatches(newMatches, comboCounter + 1);
+            const newMatchResult = findMatches();
+            if(newMatchResult.cells.length > 0) {
+                await processMatches(newMatchResult, comboCounter + 1);
             } else {
                 checkGameState();
                 isProcessing = false;
             }
         }
 
-        function showFloatingText(r, c, text, colorClass) {
-            const rect = boardEl.getBoundingClientRect();
-            const cellWidth = 55 + 6;
-            const x = rect.left + c * cellWidth + 10;
-            const y = rect.top + r * cellWidth + window.scrollY;
+        // ========== 计分展示面板 ==========
 
-            const el = document.createElement('div');
-            el.className = 'floating-text';
-            el.innerText = text;
-            el.style.left = `${x}px`;
-            el.style.top = `${y}px`;
-            
-            if(colorClass === 'c-red') el.style.color = '#ff8a80';
-            if(colorClass === 'c-blue') el.style.color = '#82b1ff';
-            if(colorClass === 'c-green') el.style.color = '#b9f6ca';
-            if(colorClass === 'c-yellow') el.style.color = '#ffe57f';
-            if(colorClass === 'c-purple') el.style.color = '#ea80fc';
+        // 颜色类 → 面板高亮 CSS 类
+        function colorToBonusClass(colorClass) {
+            const map = {
+                'c-red': 'sp-bonus-red', 'c-blue': 'sp-bonus-blue',
+                'c-green': 'sp-bonus-green', 'c-yellow': 'sp-bonus-yellow',
+                'c-purple': 'sp-bonus-purple'
+            };
+            return map[colorClass] || '';
+        }
 
-            document.body.appendChild(el);
-            setTimeout(() => el.remove(), 1200);
+        function jokerToBonusClass(joker) {
+            if(!joker) return '';
+            if(joker.color) return colorToBonusClass(joker.color);
+            if(joker.type === 'shape') return 'sp-bonus-shape';
+            if(joker.type === 'combo') return 'sp-bonus-combo';
+            return '';
+        }
+
+        // 方块颜色 → Emoji
+        function colorToEmoji(colorClass) {
+            const map = { 'c-red': '🟥', 'c-blue': '🟦', 'c-green': '🟩', 'c-yellow': '🟨', 'c-purple': '🟪' };
+            return map[colorClass] || '⬜';
+        }
+
+        let scorePanelTimer = null;
+
+        async function showScorePanel(panelDirections, baseMult, panelRows, totalScore) {
+            const panel      = document.getElementById('scorePanel');
+            const dirEl      = document.getElementById('spDirection');
+            const dividerEl  = document.getElementById('spDivider');
+            const rowsEl     = document.getElementById('spRows');
+            const totalEl    = document.getElementById('spTotal');
+            const totalNumEl = document.getElementById('spTotalNum');
+
+            // 清除上一次的淡出定时器
+            if(scorePanelTimer) { clearTimeout(scorePanelTimer); scorePanelTimer = null; }
+
+            // 重置状态
+            panel.classList.remove('fadeout');
+            dirEl.classList.remove('show');
+            totalEl.classList.remove('show');
+            totalNumEl.classList.remove('bounce');
+            rowsEl.innerHTML = '';
+            dividerEl.style.display = 'none';
+            panel.classList.add('visible');
+
+            // --- 第一行：方向判定 ---
+            // panelDirections 是 Set<'horizontal'|'vertical'|'diagonal'>
+            const dirNameMap = { horizontal: '横向', vertical: '竖向', diagonal: '斜向' };
+            const dirParts = Array.from(panelDirections).map(d => dirNameMap[d] || d);
+
+            let dirLabel = '';
+            if(dirParts.length === 0) {
+                // 连锁消除：无被移动方块，直接显示基础倍率 ×1
+                dirEl.innerHTML = `连锁消除 → 基础倍率 <span class="sp-mult-badge">×${baseMult}</span>`;
+            } else if(dirParts.length === 1) {
+                // 只有单方向，无交叉
+                dirLabel = dirParts.map(d => `<span class="sp-dir-badge">${d}</span>`).join(' + ');
+                dirEl.innerHTML = `被移动方块处于 ${dirLabel} → 基础倍率 <span class="sp-mult-badge">×${baseMult}</span>`;
+            } else {
+                // 多方向交叉
+                dirLabel = dirParts.map(d => `<span class="sp-dir-badge">${d}</span>`).join(' + ');
+                dirEl.innerHTML = `被移动方块处于 ${dirLabel} 交叉 → 基础倍率 <span class="sp-mult-badge">×${baseMult}</span>`;
+            }
+
+            await sleep(50);
+            dirEl.classList.add('show');
+            dividerEl.style.display = '';
+
+            await sleep(300);
+
+            // --- 逐方块明细 ---
+            for(let i = 0; i < panelRows.length; i++) {
+                const row = panelRows[i];
+                const emoji = colorToEmoji(row.colorClass);
+                const bonusCls = jokerToBonusClass(row.joker);
+                const jokerSymbol = row.joker ? getJokerBadgeText(row.joker) : '';
+                const jokerName   = row.joker ? row.joker.name : '';
+
+                // 构建 chip 部分
+                let chipStr = '';
+                if(row.chipBonus > 0) {
+                    chipStr = `(${row.baseChip} <span class="${bonusCls}">+${row.chipBonus} ${jokerSymbol}${jokerName}</span>)`;
+                } else {
+                    chipStr = `基础分 ${row.baseChip}`;
+                }
+
+                // 构建 mult 部分
+                let multStr = '';
+                if(row.multBonus > 0) {
+                    multStr = `(<span class="${bonusCls}">${row.baseMult} +${row.multBonus} ${jokerSymbol}${jokerName}</span>)`;
+                } else {
+                    multStr = `倍率 ${row.baseMult}`;
+                }
+
+                const rowEl = document.createElement('div');
+                rowEl.className = 'sp-row';
+                rowEl.innerHTML = `${emoji} ${chipStr} × ${multStr} = <b>${row.cellScore}</b>`;
+                rowsEl.appendChild(rowEl);
+
+                await sleep(30);
+                rowEl.classList.add('show');
+                await sleep(150);
+            }
+
+            // --- 总分 ---
+            totalNumEl.textContent = `+${totalScore}`;
+            totalEl.classList.add('show');
+            await sleep(50);
+            totalNumEl.classList.remove('bounce');
+            void totalNumEl.offsetWidth; // reflow 强制重启动画
+            totalNumEl.classList.add('bounce');
+
+            // 面板保持显示，不自动淡出，直到下一次消除时被新内容覆盖
         }
 
         function createImpactFlash(x, y, color) {
