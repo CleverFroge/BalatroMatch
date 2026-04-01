@@ -445,6 +445,167 @@
             background: rgba(255,255,255,0.3);
         }
 
+        /* ========== 开局选牌界面 ========== */
+        #slotPickerOverlay {
+            display: none;
+            position: fixed;
+            top: 0; left: 0; right: 0; bottom: 0;
+            background: rgba(0,0,0,0.88);
+            z-index: 500;
+            justify-content: center;
+            align-items: center;
+        }
+        #slotPickerOverlay.active {
+            display: flex;
+        }
+        .slot-picker-panel {
+            background: #1e1e2e;
+            border: 2px solid #4a4a6a;
+            border-radius: 16px;
+            padding: 28px 32px;
+            max-width: 680px;
+            width: 95%;
+            box-shadow: 0 16px 48px rgba(0,0,0,0.8);
+        }
+        .slot-picker-panel h2 {
+            color: #ffeb3b;
+            text-align: center;
+            margin: 0 0 6px 0;
+            font-size: 24px;
+        }
+        .slot-picker-panel .sp-hint {
+            text-align: center;
+            color: #888;
+            font-size: 13px;
+            margin-bottom: 20px;
+        }
+        /* 槽位行 */
+        .slots-row {
+            display: flex;
+            gap: 12px;
+            justify-content: center;
+            margin-bottom: 20px;
+        }
+        .slot-card {
+            width: 110px;
+            min-height: 90px;
+            background: #2a2a3d;
+            border: 2px dashed #555;
+            border-radius: 10px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            transition: border-color 0.2s, background 0.2s;
+            padding: 10px 8px;
+            box-sizing: border-box;
+            position: relative;
+        }
+        .slot-card:hover {
+            border-color: #ffeb3b;
+            background: #33334a;
+        }
+        .slot-card.slot-empty {
+            border-color: #444;
+        }
+        .slot-card.slot-target-highlight {
+            border-color: #ff4081;
+            background: #3a2040;
+            animation: attachPulse 0.8s ease-in-out infinite alternate;
+        }
+        .slot-card .slot-label {
+            font-size: 11px;
+            color: #666;
+            margin-bottom: 6px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+        .slot-card .slot-joker-name {
+            font-size: 13px;
+            font-weight: bold;
+            color: #ffeb3b;
+            text-align: center;
+        }
+        .slot-card .slot-joker-hint {
+            font-size: 10px;
+            color: #aaa;
+            margin-top: 4px;
+            text-align: center;
+        }
+        .slot-card .slot-remove-hint {
+            font-size: 10px;
+            color: #ff7777;
+            margin-top: 4px;
+        }
+        /* 背包牌行（选牌界面中） */
+        .picker-inventory {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+            justify-content: center;
+            margin-bottom: 22px;
+            min-height: 70px;
+        }
+        .picker-joker-card {
+            background: #2d2d3d;
+            border: 2px solid #444;
+            border-radius: 8px;
+            padding: 10px 12px;
+            width: 120px;
+            text-align: center;
+            cursor: pointer;
+            transition: border-color 0.2s, transform 0.15s;
+        }
+        .picker-joker-card:hover {
+            border-color: #ffeb3b;
+            transform: translateY(-3px);
+        }
+        .picker-joker-card.selected-pick {
+            border-color: #ff4081;
+            box-shadow: 0 0 16px rgba(255,64,129,0.5);
+            transform: translateY(-5px) scale(1.04);
+        }
+        .picker-joker-card b {
+            display: block;
+            font-size: 14px;
+            color: #ffeb3b;
+            margin-bottom: 4px;
+        }
+        .picker-joker-card small {
+            font-size: 11px;
+            color: #aaa;
+            line-height: 1.3;
+        }
+        .slot-picker-start-btn {
+            display: block;
+            margin: 0 auto;
+            padding: 12px 40px;
+            font-size: 17px;
+            background: #ffeb3b;
+            color: #333;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-weight: bold;
+            box-shadow: 0 4px 0 #bcab27;
+            transition: 0.1s;
+        }
+        .slot-picker-start-btn:active {
+            transform: translateY(4px);
+            box-shadow: none;
+        }
+        /* 槽位商品（商店中）*/
+        .shop-item.slot-shop-item {
+            border-color: #7c4dff;
+        }
+        .shop-item.slot-shop-item:hover {
+            border-color: #b388ff;
+        }
+        .shop-item.slot-shop-item b {
+            color: #b388ff;
+        }
+
     </style>
 </head>
 <body>
@@ -453,6 +614,22 @@
     <div class="attach-banner" id="attachBanner">
         🎯 点击棋盘上的方块以附着小丑牌效果
         <button class="cancel-attach" onclick="cancelAttachMode()">✕ 取消</button>
+    </div>
+
+    <!-- 开局选牌界面 -->
+    <div id="slotPickerOverlay">
+        <div class="slot-picker-panel">
+            <h2>⚙ 开局配置</h2>
+            <div class="sp-hint">选择要装入槽位的小丑牌，点击已装牌的槽位可退回背包</div>
+            <div class="slots-row" id="slotPickerSlots">
+                <!-- 由 JS 注入 -->
+            </div>
+            <div style="font-size:12px;color:#666;text-align:center;margin-bottom:12px;">背包</div>
+            <div class="picker-inventory" id="slotPickerInventory">
+                <!-- 由 JS 注入 -->
+            </div>
+            <button class="slot-picker-start-btn" onclick="closeSlotPicker()">开始挑战 ▶</button>
+        </div>
     </div>
 
     <h1>♦ 消除小丑牌 (Balatro Match) ♦</h1>
@@ -500,7 +677,7 @@
             <div class="shop-items" id="shopItems">
                 <!-- items injected via js -->
             </div>
-            <button class="btn-action" onclick="initGame()">进入下一局 (Next Ante)</button>
+            <button class="btn-action" onclick="onNextLevelClick()">进入下一局 (Next Ante)</button>
         </div>
         </div><!-- /.board wrapper -->
 
@@ -523,7 +700,7 @@
         const COLORS = GAME_CONFIG.COLORS;
         const MAX_JOKERS = GAME_CONFIG.MAX_JOKERS;
 
-        // board[r][c] = { color: 'c-red', joker: null | jokerObject }
+        // board[r][c] = { color: 'c-red', jokers: [] }  —— jokers 数组，最多 MAX_JOKERS_PER_CELL 张
         let board = [];
         let score = 0;
         let target = GAME_CONFIG.TARGET_SCORE_BASE;
@@ -534,12 +711,21 @@
         // 背包：玩家拥有的小丑牌（可叠加，存储为 [{joker, count}]）
         let inventory = [];
 
+        // 槽位系统
+        // slots[i] = null | jokerObject  —— 已解锁的槽位及其装入的牌
+        let slots = [];
+        // unlockedSlots：已解锁槽位数量（slots.length === unlockedSlots）
+        let unlockedSlots = 0;
+
         let selectedCell = null;
         let isProcessing = false;
 
         // 附着模式状态
         let attachMode = false;       // 是否正在附着模式
         let attachingJoker = null;    // 正在附着的小丑牌对象
+
+        // 开局选牌界面状态
+        let pickerSelectedJoker = null;  // 当前在选牌界面中选中的背包牌
 
         const boardEl = document.getElementById('board');
         const scoreEl = document.getElementById('currentScore');
@@ -556,6 +742,10 @@
             level = 1;
             // 初始给一张红莲之心（永久持有）
             inventory = [{ joker: { ...JOKER_POOL[0] }, count: 1 }];
+            // 重置槽位
+            slots = [];
+            unlockedSlots = 0;
+            pickerSelectedJoker = null;
             renderInventory();
             initGame();
         }
@@ -607,7 +797,7 @@
 
                     board[r][c] = {
                         color: availableColors[Math.floor(Math.random() * availableColors.length)],
-                        joker: null
+                        jokers: []   // v2.2: 改为 jokers 数组
                     };
                 }
             }
@@ -735,73 +925,114 @@
             }
         }
 
-        // ========== 自动附着：消除时自动从背包取牌随机附着 ==========
+        // ========== 自动附着：消除时自动从背包取牌随机附着 + 槽位触发 ==========
         // 小丑牌是永久的，不消耗背包数量；每次消除后为每种持有的牌随机附着到一个合适的方块上
+        // v2.2: 支持多效果叠加（jokers 数组），每个方块最多 MAX_JOKERS_PER_CELL 张
+        //        新增槽位触发：每个有牌的槽位 30% 概率自动附着到随机对应方块
         async function autoAttachFromInventory() {
-            if(inventory.length === 0) return;
+            const maxPerCell = GAME_CONFIG.MAX_JOKERS_PER_CELL;
 
-            // 按颜色分组收集候选方块（非空、当前无小丑牌）
-            let candidatesByColor = {};  // { 'c-red': [{r,c}], ... }
-            let candidatesAll = [];      // 所有无小丑牌的可用方块（给通用类牌用）
+            // ===== 第一阶段：背包自动附着（原有逻辑，适配多效果上限）=====
+            let inventoryAttached = [];
 
-            for(let r = 0; r < ROWS; r++) {
-                for(let c = 0; c < COLS; c++) {
-                    const cell = board[r][c];
-                    if(!cell || cell.joker) continue;
-                    
-                    candidatesAll.push({ r, c });
-                    const clr = cell.color;
-                    if(!candidatesByColor[clr]) candidatesByColor[clr] = [];
-                    candidatesByColor[clr].push({ r, c });
+            if(inventory.length > 0) {
+                // 按颜色分组收集候选方块（只考虑未满上限的方块）
+                let candidatesByColor = {};
+                let candidatesAll = [];
+
+                for(let r = 0; r < ROWS; r++) {
+                    for(let c = 0; c < COLS; c++) {
+                        const cell = board[r][c];
+                        if(!cell) continue;
+                        if(cell.jokers.length >= maxPerCell) continue;  // 已满，跳过
+
+                        candidatesAll.push({ r, c });
+                        const clr = cell.color;
+                        if(!candidatesByColor[clr]) candidatesByColor[clr] = [];
+                        candidatesByColor[clr].push({ r, c });
+                    }
+                }
+
+                // 用 Set 追踪各方块当前附着数（避免同一方块被超量附着）
+                let cellJokerCount = {};  // key: 'r,c' → 当前临时附着数
+
+                for(const entry of inventory) {
+                    const joker = entry.joker;
+
+                    let pool;
+                    if(joker.color) {
+                        pool = (candidatesByColor[joker.color] || []).filter(
+                            p => {
+                                const key = `${p.r},${p.c}`;
+                                const cur = (cellJokerCount[key] || 0) + board[p.r][p.c].jokers.length;
+                                return cur < maxPerCell;
+                            }
+                        );
+                    } else {
+                        pool = candidatesAll.filter(
+                            p => {
+                                const key = `${p.r},${p.c}`;
+                                const cur = (cellJokerCount[key] || 0) + board[p.r][p.c].jokers.length;
+                                return cur < maxPerCell;
+                            }
+                        );
+                    }
+
+                    if(pool.length === 0) continue;
+
+                    // 随机选一个方块（每张牌只附着一次）
+                    const randIdx = Math.floor(Math.random() * pool.length);
+                    const tgt = pool[randIdx];
+                    const key = `${tgt.r},${tgt.c}`;
+                    cellJokerCount[key] = (cellJokerCount[key] || 0) + 1;
+
+                    // 附着到方块 jokers 数组（不扣减背包）
+                    board[tgt.r][tgt.c].jokers.push({ ...joker });
+                    inventoryAttached.push({ r: tgt.r, c: tgt.c, joker: joker });
                 }
             }
 
-            let attached = [];
-            // 已选中的位置，避免同一方块被多张牌同时附着
-            let usedPositions = new Set();
+            // ===== 第二阶段：槽位触发（v2.2 新增）=====
+            // 对每个有牌的槽位独立 30% 概率触发
+            let slotAttached = [];
 
-            for(const entry of inventory) {
-                const joker = entry.joker;
+            for(let si = 0; si < slots.length; si++) {
+                const slotJoker = slots[si];
+                if(!slotJoker) continue;  // 空槽位跳过
 
-                // 根据牌的类型选择候选池
-                let pool;
-                if(joker.color) {
-                    // 颜色类牌：只附着到对应颜色的方块
-                    pool = (candidatesByColor[joker.color] || []).filter(
-                        p => !usedPositions.has(`${p.r},${p.c}`)
-                    );
-                } else {
-                    // 通用类牌（几何大师、多米诺等）：可附着到任意颜色方块
-                    pool = candidatesAll.filter(
-                        p => !usedPositions.has(`${p.r},${p.c}`)
-                    );
+                // 30% 概率触发
+                if(Math.random() >= GAME_CONFIG.SLOT_TRIGGER_CHANCE) continue;
+
+                // 找到符合条件且未满上限的候选方块
+                let pool = [];
+                for(let r = 0; r < ROWS; r++) {
+                    for(let c = 0; c < COLS; c++) {
+                        const cell = board[r][c];
+                        if(!cell) continue;
+                        if(cell.jokers.length >= maxPerCell) continue;
+                        // 颜色类牌只匹配对应颜色方块
+                        if(slotJoker.color && cell.color !== slotJoker.color) continue;
+                        pool.push({ r, c });
+                    }
                 }
 
                 if(pool.length === 0) continue;
 
-                // 为该牌拥有的每一张各附着到一个随机方块上
-                const attachCount = Math.min(entry.count, pool.length);
-                for(let n = 0; n < attachCount; n++) {
-                    // 从剩余池中随机选一个
-                    const available = pool.filter(p => !usedPositions.has(`${p.r},${p.c}`));
-                    if(available.length === 0) break;
+                const randIdx = Math.floor(Math.random() * pool.length);
+                const tgt = pool[randIdx];
 
-                    const randIdx = Math.floor(Math.random() * available.length);
-                    const target = available[randIdx];
-                    usedPositions.add(`${target.r},${target.c}`);
-
-                    // 附着到方块（不扣减背包）
-                    board[target.r][target.c].joker = { ...joker };
-                    attached.push({ r: target.r, c: target.c, joker: joker });
-                }
+                board[tgt.r][tgt.c].jokers.push({ ...slotJoker });
+                slotAttached.push({ r: tgt.r, c: tgt.c, joker: slotJoker, slotIndex: si });
             }
 
-            if(attached.length === 0) return;
+            const allAttached = [...inventoryAttached, ...slotAttached];
+            if(allAttached.length === 0) return;
 
-            // 播放从背包卡牌飞向目标方块的动画
+            // 播放从背包卡牌/槽位飞向目标方块的动画
             renderBoard();
             let animPromises = [];
-            attached.forEach(att => {
+            allAttached.forEach(att => {
+                // 槽位触发时，fromEl 尝试指向槽位 DOM（如果在选牌界面则可能为 null，用背包元素代替）
                 const invEl = document.getElementById('inv-' + att.joker.id);
                 animPromises.push(spawnAutoAttachParticle(invEl, att.r, att.c, att.joker));
             });
@@ -894,23 +1125,29 @@
             });
         }
 
+        // v2.2: 手动附着 —— push 到 jokers 数组，受 MAX_JOKERS_PER_CELL 限制
         function attachJokerToCell(r, c) {
             if(!attachingJoker) return;
             const cell = board[r][c];
             if(!cell) return;
-
-            // 如果该方块已有同种小丑牌，不允许重复附着
-            if(cell.joker && cell.joker.id === attachingJoker.id) {
-                return;
-            }
 
             // 颜色类牌只能附着到同色方块
             if(attachingJoker.color && cell.color !== attachingJoker.color) {
                 return;
             }
 
-            // 附着到方块（不消耗背包）
-            cell.joker = { ...attachingJoker };
+            // 上限检查
+            if(cell.jokers.length >= GAME_CONFIG.MAX_JOKERS_PER_CELL) {
+                return;
+            }
+
+            // 如果该方块已有同种小丑牌，不允许重复附着
+            if(cell.jokers.some(j => j.id === attachingJoker.id)) {
+                return;
+            }
+
+            // 附着到方块 jokers 数组（不消耗背包）
+            cell.jokers.push({ ...attachingJoker });
 
             cancelAttachMode();
         }
@@ -990,14 +1227,19 @@
                         cell.classList.add('falling');
                     }
 
-                    // 显示附着的小丑牌徽章
-                    if(cellData.joker) {
+                    // v2.2: 显示多个徽章，从右上角向左排列
+                    // 每个徽章宽 20px + 2px 间距 = 22px，第 i 个（从右）偏移 i * 22px
+                    const jokers = cellData.jokers || [];
+                    jokers.forEach((joker, idx) => {
                         const badge = document.createElement('div');
-                        badge.className = `joker-badge ${getJokerBadgeClass(cellData.joker)}`;
-                        badge.innerText = getJokerBadgeText(cellData.joker);
-                        badge.title = cellData.joker.name + ': ' + cellData.joker.desc.replace(/<br>/g, ' ');
+                        badge.className = `joker-badge ${getJokerBadgeClass(joker)}`;
+                        badge.innerText = getJokerBadgeText(joker);
+                        badge.title = joker.name + ': ' + joker.desc.replace(/<br>/g, ' ');
+                        // 从右上角向左排列：第 0 个在最右，第 1 个向左偏移 22px，以此类推
+                        badge.style.right = `${-4 + idx * 22}px`;
+                        badge.style.top = '-4px';
                         cell.appendChild(badge);
-                    }
+                    });
                     
                     boardEl.appendChild(cell);
                 }
@@ -1198,25 +1440,25 @@
 
                 let triggeredJokerCells = [];
 
-                // ===== 先做粒子特效判断（逻辑与原版一致） =====
+                // ===== 先做粒子特效判断（逻辑与原版一致，适配 jokers 数组）=====
                 group.forEach(m => {
                     const cellData = board[m.r][m.c];
-                    if(!cellData || !cellData.joker) return;
-                    const joker = cellData.joker;
-                    let triggered = false;
+                    if(!cellData || !cellData.jokers || cellData.jokers.length === 0) return;
 
-                    if(joker.color && joker.color === color) {
-                        // 颜色类小丑牌（红/蓝/绿/黄/紫）
-                        if(['joker-red','joker-blue','joker-green','joker-yellow','joker-purple'].includes(joker.id)) {
-                            triggered = true;
+                    cellData.jokers.forEach(joker => {
+                        let triggered = false;
+                        if(joker.color && joker.color === color) {
+                            if(['joker-red','joker-blue','joker-green','joker-yellow','joker-purple'].includes(joker.id)) {
+                                triggered = true;
+                            }
                         }
-                    }
-                    if(joker.id === 'joker-geo' && size >= 5) { triggered = true; }
-                    if(joker.id === 'joker-combo' && comboCounter >= 3) { triggered = true; }
+                        if(joker.id === 'joker-geo' && size >= 5) { triggered = true; }
+                        if(joker.id === 'joker-combo' && comboCounter >= 3) { triggered = true; }
 
-                    if(triggered) {
-                        triggeredJokerCells.push({ r: m.r, c: m.c, joker: joker });
-                    }
+                        if(triggered) {
+                            triggeredJokerCells.push({ r: m.r, c: m.c, joker: joker });
+                        }
+                    });
                 });
 
                 // 播放粒子特效
@@ -1235,36 +1477,46 @@
                     await sleep(400);
                 }
 
-                // ===== 逐方块计分 =====
+                // ===== 逐方块计分（v2.2：累加所有 jokers 效果）=====
                 group.forEach(m => {
                     const cellData = board[m.r][m.c];
                     if(!cellData) return;
-                    const joker = cellData.joker;
+                    const jokers = cellData.jokers || [];
 
-                    let chipBonus = 0;   // 基础分加成
-                    let multBonus = 0;   // 倍率加成
-                    let jokerForPanel = null; // 面板展示用的卡牌信息
+                    let chipBonus = 0;   // 基础分加成（累加）
+                    let multBonus = 0;   // 倍率加成（累加）
+                    let jokersForPanel = []; // 面板展示用的卡牌列表（有效触发的）
 
-                    if(joker) {
+                    jokers.forEach(joker => {
+                        let thisChip = 0;
+                        let thisMult = 0;
+                        let active = false;
+
                         // 颜色类
                         if(joker.color && joker.color === color) {
-                            if(joker.id === 'joker-blue')   { chipBonus += 50; jokerForPanel = joker; }
-                            if(joker.id === 'joker-yellow') { chipBonus += 60; jokerForPanel = joker; }
-                            if(joker.id === 'joker-red')    { multBonus += 3;  jokerForPanel = joker; }
-                            if(joker.id === 'joker-green')  { multBonus += 4;  jokerForPanel = joker; }
-                            if(joker.id === 'joker-purple') { multBonus += 5;  jokerForPanel = joker; }
+                            if(joker.id === 'joker-blue')   { thisChip += 50; active = true; }
+                            if(joker.id === 'joker-yellow') { thisChip += 60; active = true; }
+                            if(joker.id === 'joker-red')    { thisMult += 3;  active = true; }
+                            if(joker.id === 'joker-green')  { thisMult += 4;  active = true; }
+                            if(joker.id === 'joker-purple') { thisMult += 5;  active = true; }
                         }
                         // 几何大师（5连消及以上触发）
                         if(joker.id === 'joker-geo' && size >= 5) {
-                            multBonus += 6;
-                            jokerForPanel = joker;
+                            thisMult += 6;
+                            active = true;
                         }
                         // 多米诺（连击数>=3时触发）
                         if(joker.id === 'joker-combo' && comboCounter >= 3) {
-                            multBonus += 8;
-                            jokerForPanel = joker;
+                            thisMult += 8;
+                            active = true;
                         }
-                    }
+
+                        if(active) {
+                            chipBonus += thisChip;
+                            multBonus += thisMult;
+                            jokersForPanel.push({ joker, chipBonus: thisChip, multBonus: thisMult });
+                        }
+                    });
 
                     const baseChip  = GAME_CONFIG.BASE_CHIP;   // 10
                     const totalChip = baseChip + chipBonus;
@@ -1279,7 +1531,7 @@
                         chipBonus,
                         baseMult,
                         multBonus,
-                        joker: jokerForPanel,
+                        jokers: jokersForPanel,   // v2.2: 改为数组
                         cellScore
                     });
                 });
@@ -1315,7 +1567,7 @@
                 for(let r=0; r<emptySpaces; r++) {
                     board[r][c] = {
                         color: COLORS[Math.floor(Math.random() * COLORS.length)],
-                        joker: null
+                        jokers: []   // v2.2: 改为 jokers 数组
                     };
                     falling.push({r: r, c: c});
                 }
@@ -1413,22 +1665,35 @@
             for(let i = 0; i < panelRows.length; i++) {
                 const row = panelRows[i];
                 const emoji = colorToEmoji(row.colorClass);
-                const bonusCls = jokerToBonusClass(row.joker);
-                const jokerSymbol = row.joker ? getJokerBadgeText(row.joker) : '';
-                const jokerName   = row.joker ? row.joker.name : '';
+
+                // v2.2: 支持多张卡牌，分别构建 chip 和 mult 片段
+                // row.jokers = [{ joker, chipBonus, multBonus }, ...]
+                const activeJokers = row.jokers || [];
 
                 // 构建 chip 部分
                 let chipStr = '';
-                if(row.chipBonus > 0) {
-                    chipStr = `(${row.baseChip} <span class="${bonusCls}">+${row.chipBonus} ${jokerSymbol}${jokerName}</span>)`;
+                const chipJokers = activeJokers.filter(je => je.chipBonus > 0);
+                if(chipJokers.length > 0) {
+                    const bonusParts = chipJokers.map(je => {
+                        const cls = jokerToBonusClass(je.joker);
+                        const sym = getJokerBadgeText(je.joker);
+                        return `<span class="${cls}">+${je.chipBonus} ${sym}${je.joker.name}</span>`;
+                    }).join(' ');
+                    chipStr = `(${row.baseChip} ${bonusParts})`;
                 } else {
                     chipStr = `基础分 ${row.baseChip}`;
                 }
 
                 // 构建 mult 部分
                 let multStr = '';
-                if(row.multBonus > 0) {
-                    multStr = `(<span class="${bonusCls}">${row.baseMult} +${row.multBonus} ${jokerSymbol}${jokerName}</span>)`;
+                const multJokers = activeJokers.filter(je => je.multBonus > 0);
+                if(multJokers.length > 0) {
+                    const bonusParts = multJokers.map(je => {
+                        const cls = jokerToBonusClass(je.joker);
+                        const sym = getJokerBadgeText(je.joker);
+                        return `<span class="${cls}">+${je.multBonus} ${sym}${je.joker.name}</span>`;
+                    }).join(' ');
+                    multStr = `(${row.baseMult} ${bonusParts})`;
                 } else {
                     multStr = `倍率 ${row.baseMult}`;
                 }
@@ -1627,7 +1892,7 @@
             const shuffled = [...available].sort(() => 0.5 - Math.random());
             const shopStock = shuffled.slice(0, 3);
             
-            if(shopStock.length === 0) {
+            if(shopStock.length === 0 && unlockedSlots >= GAME_CONFIG.MAX_SLOTS) {
                 shopItemsContainer.innerHTML = '<div style="color:#aaa; font-size:16px; padding:20px;">已集齐所有小丑牌！</div>';
             }
 
@@ -1642,6 +1907,37 @@
                 el.onclick = () => buyItem(item, el);
                 shopItemsContainer.appendChild(el);
             });
+
+            // v2.2: 新增槽位商品（与小丑牌并列展示）
+            if(unlockedSlots < GAME_CONFIG.MAX_SLOTS) {
+                const slotIndex = unlockedSlots;   // 下一个要购买的槽位序号（0-based）
+                const slotCost = GAME_CONFIG.SLOT_COSTS[slotIndex];
+                const slotEl = document.createElement('div');
+                slotEl.className = 'shop-item slot-shop-item';
+                slotEl.innerHTML = `
+                    <b>槽位 #${slotIndex + 1}</b>
+                    <small>解锁一个小丑牌槽位<br>每次消除时有 30% 概率触发</small>
+                    <span class="cost">$${slotCost}</span>
+                `;
+                slotEl.onclick = () => buySlot(slotIndex, slotCost, slotEl);
+                shopItemsContainer.appendChild(slotEl);
+            }
+        }
+
+        // v2.2: 购买槽位
+        function buySlot(slotIndex, cost, element) {
+            if(unlockedSlots >= GAME_CONFIG.MAX_SLOTS) return;
+            const actualCost = GAME_CONFIG.SLOT_COSTS[unlockedSlots];
+            if(gold < actualCost) {
+                alert("金币不足! (Not enough gold)");
+                return;
+            }
+            gold -= actualCost;
+            unlockedSlots++;
+            slots.push(null);  // 新槽位初始为空
+            updateUI();
+            element.classList.add('sold');
+            element.innerHTML = `<b>已解锁</b><small>槽位 #${slotIndex + 1} 已激活</small>`;
         }
 
         function buyItem(item, element) {
@@ -1661,6 +1957,110 @@
             } else {
                 alert("金币不足! (Not enough gold)");
             }
+        }
+
+        // v2.2: "进入下一局"按钮点击 —— 如果有槽位则弹出选牌界面，否则直接 initGame
+        function onNextLevelClick() {
+            if(unlockedSlots > 0) {
+                openSlotPicker();
+            } else {
+                initGame();
+            }
+        }
+
+        // ========== 开局选牌界面 ==========
+
+        function openSlotPicker() {
+            pickerSelectedJoker = null;
+            renderSlotPicker();
+            document.getElementById('slotPickerOverlay').classList.add('active');
+        }
+
+        function closeSlotPicker() {
+            document.getElementById('slotPickerOverlay').classList.remove('active');
+            pickerSelectedJoker = null;
+            initGame();
+        }
+
+        // 渲染选牌界面（槽位行 + 背包行）
+        function renderSlotPicker() {
+            const slotsEl = document.getElementById('slotPickerSlots');
+            const invEl = document.getElementById('slotPickerInventory');
+            slotsEl.innerHTML = '';
+            invEl.innerHTML = '';
+
+            // --- 槽位行 ---
+            for(let i = 0; i < unlockedSlots; i++) {
+                const slotDiv = document.createElement('div');
+                slotDiv.className = 'slot-card';
+                const filled = slots[i];
+
+                if(pickerSelectedJoker && !filled) {
+                    slotDiv.classList.add('slot-target-highlight');
+                }
+
+                if(filled) {
+                    // 已装牌：点击退回背包
+                    slotDiv.classList.add('slot-filled');
+                    slotDiv.innerHTML = `
+                        <div class="slot-label">槽位 ${i + 1}</div>
+                        <div class="slot-joker-name">${filled.name}</div>
+                        <div class="slot-remove-hint">点击退回</div>
+                    `;
+                    slotDiv.onclick = () => {
+                        slots[i] = null;
+                        renderSlotPicker();
+                    };
+                } else {
+                    // 空槽位
+                    slotDiv.classList.add('slot-empty');
+                    slotDiv.innerHTML = `
+                        <div class="slot-label">槽位 ${i + 1}</div>
+                        <div style="font-size:24px;color:#555;">＋</div>
+                        <div class="slot-joker-hint">点击装入</div>
+                    `;
+                    slotDiv.onclick = () => {
+                        if(pickerSelectedJoker) {
+                            // 同一张牌可以放多个槽位（策划允许）
+                            slots[i] = { ...pickerSelectedJoker };
+                            pickerSelectedJoker = null;
+                            renderSlotPicker();
+                        }
+                    };
+                }
+                slotsEl.appendChild(slotDiv);
+            }
+
+            // --- 背包行 ---
+            if(inventory.length === 0) {
+                invEl.innerHTML = '<div style="color:#666;font-size:13px;">背包为空</div>';
+                return;
+            }
+            inventory.forEach(entry => {
+                const j = entry.joker;
+                const card = document.createElement('div');
+                card.className = 'picker-joker-card';
+                if(pickerSelectedJoker && pickerSelectedJoker.id === j.id) {
+                    card.classList.add('selected-pick');
+                }
+                // 类型提示
+                let typeHint = '';
+                if(j.color) {
+                    const colorName = { 'c-red': '红色', 'c-blue': '蓝色', 'c-green': '绿色', 'c-yellow': '黄色', 'c-purple': '紫色' };
+                    typeHint = colorName[j.color] || '';
+                }
+                card.innerHTML = `<b>${j.name}</b><small>${j.desc.replace(/<br>/g, ' ')}</small>`;
+                card.onclick = () => {
+                    // 切换选中状态
+                    if(pickerSelectedJoker && pickerSelectedJoker.id === j.id) {
+                        pickerSelectedJoker = null;
+                    } else {
+                        pickerSelectedJoker = j;
+                    }
+                    renderSlotPicker();
+                };
+                invEl.appendChild(card);
+            });
         }
 
         // Start

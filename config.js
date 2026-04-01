@@ -8,7 +8,11 @@ const GAME_CONFIG = {
     TARGET_SCORE_BASE: 8000,         // 第一关的目标分数 (后续关卡为 关卡数 × 该基础分)
     BASE_REWARD: 5,                  // 每次通关后给予的基础金币奖励
     MOVE_REWARD_MULTIPLIER: 2,       // 剩余步数转化为金币的倍数 (例如剩余2步，则额外奖励2×2=4金币)
-    BASE_CHIP: 10                    // 每个方块的基础分
+    BASE_CHIP: 10,                   // 每个方块的基础分
+    SLOT_TRIGGER_CHANCE: 0.3,        // 槽位触发概率（每次消除时每个有牌槽位的触发概率）
+    MAX_SLOTS: 3,                    // 最大槽位数量
+    SLOT_COSTS: [10, 30, 90],        // 槽位购买价格（按序号对应第1/2/3个槽位）
+    MAX_JOKERS_PER_CELL: 3           // 单个方块最多叠加的小丑牌数量
 };
 
 // 小丑牌卡池配置
