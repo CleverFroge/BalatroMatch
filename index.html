@@ -674,6 +674,8 @@
             <p id="shopDesc" style="color:#ddd; font-size:16px; margin-top:10px;">
                 过关奖励: <span id="rewardBase" style="color:#ffd740"></span> + 步数转化: <span id="rewardMoves" style="color:#ffd740"></span>
             </p>
+            <!-- v2.3: 新解锁小丑牌展示区，由 JS 控制显示/隐藏 -->
+            <div id="shopUnlockSection" style="display:none;width:100%;max-width:560px;"></div>
             <div class="shop-items" id="shopItems">
                 <!-- items injected via js -->
             </div>
@@ -717,6 +719,46 @@
         // unlockedSlots：已解锁槽位数量（slots.length === unlockedSlots）
         let unlockedSlots = 0;
 
+        // ========== 小丑牌解锁状态 (v2.3 新增) ==========
+        // 这两个 Set 是"跨 run 持久"状态，不随 resetGameFull() 清空。
+        // 数据存储在 localStorage，页面刷新/重开后仍然保留。
+
+        /** localStorage key 常量 */
+        const LS_KEY_UNLOCKED_JOKERS  = 'bm_unlockedJokerIds';
+        const LS_KEY_CLEARED_LEVELS   = 'bm_clearedLevelIds';
+
+        /**
+         * 从 localStorage 安全读取一个 JSON 数组并转为 Set。
+         * 应对：首次进入（无数据）、数据损坏（parse 失败）、类型异常。
+         */
+        function loadSetFromStorage(key) {
+            try {
+                const raw = localStorage.getItem(key);
+                if (!raw) return new Set();
+                const arr = JSON.parse(raw);
+                if (!Array.isArray(arr)) return new Set();
+                return new Set(arr);
+            } catch (e) {
+                console.warn(`[loadSetFromStorage] 读取 ${key} 失败，使用空集合`, e);
+                return new Set();
+            }
+        }
+
+        /** 将 Set 序列化后写入 localStorage */
+        function saveSetToStorage(key, set) {
+            try {
+                localStorage.setItem(key, JSON.stringify([...set]));
+            } catch (e) {
+                console.warn(`[saveSetToStorage] 写入 ${key} 失败`, e);
+            }
+        }
+
+        // 记录已通过关卡奖励解锁的小丑牌 id 集合（跨 run 持久保留）
+        let unlockedJokerIds = loadSetFromStorage(LS_KEY_UNLOCKED_JOKERS);
+
+        // 记录已完成首次通关的关卡 id 集合（跨 run 持久保留，防止重复发放奖励）
+        let clearedLevelIds  = loadSetFromStorage(LS_KEY_CLEARED_LEVELS);
+
         let selectedCell = null;
         let isProcessing = false;
 
@@ -746,6 +788,8 @@
             slots = [];
             unlockedSlots = 0;
             pickerSelectedJoker = null;
+            // 注意：unlockedJokerIds 和 clearedLevelIds 是跨 run 持久状态，
+            // 不在此处重置，它们由 localStorage 持久化，New Run 后依然保留。
             renderInventory();
             initGame();
         }
@@ -753,8 +797,10 @@
         // Initialize Level
         function initGame() {
             score = 0;
-            moves = GAME_CONFIG.INITIAL_MOVES;
-            target = level * GAME_CONFIG.TARGET_SCORE_BASE;
+            // v2.3: 从关卡配置读取目标分和步数，不再硬编码
+            const levelCfg = getLevelConfig(level);
+            moves = levelCfg.moves;
+            target = levelCfg.targetScore;
             updateUI();
             gameOverScreen.style.display = 'none';
             shopScreen.style.display = 'none';
@@ -994,9 +1040,13 @@
 
             // ===== 第二阶段：槽位触发（v2.2 新增）=====
             // 对每个有牌的槽位独立 30% 概率触发
+            // v2.3: 只触发本关允许使用的槽位（effectiveSlots 范围内）
             let slotAttached = [];
 
-            for(let si = 0; si < slots.length; si++) {
+            const levelCfgForSlot = getLevelConfig(level);
+            const effectiveSlotsCount = Math.min(slots.length, levelCfgForSlot.maxSlots);
+
+            for(let si = 0; si < effectiveSlotsCount; si++) {
                 const slotJoker = slots[si];
                 if(!slotJoker) continue;  // 空槽位跳过
 
@@ -1862,6 +1912,34 @@
 
         async function checkGameState() {
             if(score >= target) {
+                // v2.3: 通关时处理关卡奖励（仅首次通关该关发放）
+                const currentLevelId = level;  // 通关前的关卡编号
+                const levelCfg = getLevelConfig(currentLevelId);
+                let newlyUnlockedJokers = [];  // 本次实际新解锁的小丑牌列表
+
+                if(!clearedLevelIds.has(currentLevelId)) {
+                    // 首次通关：将 unlockJokers 中的牌解锁进"可获得卡池"
+                    // 语义：进入可购买集合，不直接送背包
+                    clearedLevelIds.add(currentLevelId);
+                    saveSetToStorage(LS_KEY_CLEARED_LEVELS, clearedLevelIds);
+
+                    const rewardIds = levelCfg.unlockJokers || [];
+                    rewardIds.forEach(jokerId => {
+                        if(!unlockedJokerIds.has(jokerId)) {
+                            const jokerDef = JOKER_POOL.find(j => j.id === jokerId);
+                            if(jokerDef) {
+                                // 仅解锁进卡池，不自动送背包
+                                unlockedJokerIds.add(jokerId);
+                                newlyUnlockedJokers.push(jokerDef);
+                            }
+                        }
+                    });
+                    // 持久化最新解锁状态
+                    if(newlyUnlockedJokers.length > 0) {
+                        saveSetToStorage(LS_KEY_UNLOCKED_JOKERS, unlockedJokerIds);
+                    }
+                }
+
                 level++;
                 
                 const baseReward = GAME_CONFIG.BASE_REWARD;
@@ -1872,28 +1950,68 @@
                 document.getElementById('rewardBase').innerText = `+${baseReward}`;
                 document.getElementById('rewardMoves').innerText = `+${moveReward}`;
                 
-                openShop();
+                openShop(newlyUnlockedJokers);
             } else if (moves <= 0) {
                 gameOverScreen.style.display = 'flex';
                 document.getElementById('gameOverTitle').style.color = '#ff5252';
             }
         }
 
-        function openShop() {
+        function openShop(newlyUnlockedJokers = []) {
             shopScreen.style.display = 'flex';
             const shopItemsContainer = document.getElementById('shopItems');
             shopItemsContainer.innerHTML = '';
+
+            // v2.3: 展示本关新解锁的小丑牌（仅首次通关且有奖励时显示）
+            const unlockSection = document.getElementById('shopUnlockSection');
+            if(newlyUnlockedJokers && newlyUnlockedJokers.length > 0) {
+                const colorName = { 'c-red': '红色', 'c-blue': '蓝色', 'c-green': '绿色', 'c-yellow': '黄色', 'c-purple': '紫色' };
+                const badgeTextMap = {
+                    'joker-red': '♥', 'joker-blue': '◆', 'joker-green': '♣',
+                    'joker-yellow': '★', 'joker-purple': '◉', 'joker-geo': '▲', 'joker-combo': '⚡'
+                };
+                const badgeColorMap = {
+                    'c-red': '#ff5252', 'c-blue': '#448aff', 'c-green': '#69f0ae',
+                    'c-yellow': '#ffd740', 'c-purple': '#e040fb'
+                };
+                let cardsHtml = newlyUnlockedJokers.map(j => {
+                    const badgeSym = badgeTextMap[j.id] || '?';
+                    const badgeColor = j.color ? (badgeColorMap[j.color] || '#ffeb3b') : (j.type === 'shape' ? '#ff4081' : j.type === 'combo' ? '#00e5ff' : '#ffeb3b');
+                    const typeLabel = j.color ? (colorName[j.color] || '') + '方块' : '任意方块';
+                    return `<div style="background:#2d2d3d;border:2px solid ${badgeColor};border-radius:10px;padding:12px 14px;min-width:110px;text-align:center;box-shadow:0 0 12px ${badgeColor}55;">
+                        <div style="font-size:22px;margin-bottom:4px;">${badgeSym}</div>
+                        <b style="color:${badgeColor};font-size:14px;display:block;margin-bottom:4px;">${j.name}</b>
+                        <small style="color:#ccc;font-size:11px;line-height:1.4;display:block;">${j.desc.replace(/<br>/g, ' ')}</small>
+                        <span style="font-size:10px;color:#888;display:block;margin-top:4px;">🎯 ${typeLabel}</span>
+                    </div>`;
+                }).join('');
+                unlockSection.innerHTML = `
+                    <div style="margin:16px 0 8px 0;text-align:center;">
+                        <div style="font-size:13px;color:#aaa;letter-spacing:1px;text-transform:uppercase;margin-bottom:10px;">🎉 新解锁小丑牌</div>
+                        <div style="display:flex;gap:12px;justify-content:center;flex-wrap:wrap;">${cardsHtml}</div>
+                    </div>
+                    <hr style="border:none;border-top:1px solid #3a3a55;margin:12px 0 0 0;">
+                `;
+                unlockSection.style.display = 'block';
+            } else {
+                unlockSection.innerHTML = '';
+                unlockSection.style.display = 'none';
+            }
             
             // 已拥有的牌 id 集合
             const ownedIds = new Set(inventory.map(e => e.joker.id));
 
-            // Pick 3 random jokers（排除已拥有的牌）
-            const available = JOKER_POOL.filter(j => !ownedIds.has(j.id));
+            // 可售卡池 = 基础牌（BASE_JOKER_IDS）∪ 已解锁奖励牌（unlockedJokerIds）
+            // 再排除已拥有的牌，确保"通关解锁"边界生效
+            const available = JOKER_POOL.filter(j =>
+                !ownedIds.has(j.id) &&
+                (BASE_JOKER_IDS.has(j.id) || unlockedJokerIds.has(j.id))
+            );
             const shuffled = [...available].sort(() => 0.5 - Math.random());
             const shopStock = shuffled.slice(0, 3);
             
             if(shopStock.length === 0 && unlockedSlots >= GAME_CONFIG.MAX_SLOTS) {
-                shopItemsContainer.innerHTML = '<div style="color:#aaa; font-size:16px; padding:20px;">已集齐所有小丑牌！</div>';
+                shopItemsContainer.innerHTML = '<div style="color:#aaa; font-size:16px; padding:20px;">已集齐所有已解锁小丑牌！</div>';
             }
 
             shopStock.forEach(item => {
@@ -1960,8 +2078,11 @@
         }
 
         // v2.2: "进入下一局"按钮点击 —— 如果有槽位则弹出选牌界面，否则直接 initGame
+        // v2.3: 还需考虑本关 maxSlots 限制，若本关有效槽位为 0 则直接开局
         function onNextLevelClick() {
-            if(unlockedSlots > 0) {
+            const levelCfg = getLevelConfig(level);
+            const effectiveSlots = Math.min(unlockedSlots, levelCfg.maxSlots);
+            if(effectiveSlots > 0) {
                 openSlotPicker();
             } else {
                 initGame();
@@ -1989,8 +2110,12 @@
             slotsEl.innerHTML = '';
             invEl.innerHTML = '';
 
-            // --- 槽位行 ---
-            for(let i = 0; i < unlockedSlots; i++) {
+            // v2.3: 本关可用槽位数 = min(已解锁槽位数, 当前关卡 maxSlots)
+            const levelCfg = getLevelConfig(level);
+            const effectiveSlots = Math.min(unlockedSlots, levelCfg.maxSlots);
+
+            // --- 槽位行（只展示本关允许使用的槽位数量）---
+            for(let i = 0; i < effectiveSlots; i++) {
                 const slotDiv = document.createElement('div');
                 slotDiv.className = 'slot-card';
                 const filled = slots[i];
@@ -2029,6 +2154,11 @@
                     };
                 }
                 slotsEl.appendChild(slotDiv);
+            }
+
+            // 若本关 maxSlots 限制导致有效槽位为 0，展示提示
+            if(effectiveSlots === 0 && unlockedSlots > 0) {
+                slotsEl.innerHTML = `<div style="color:#888;font-size:13px;text-align:center;padding:10px;">本关不允许使用槽位</div>`;
             }
 
             // --- 背包行 ---
